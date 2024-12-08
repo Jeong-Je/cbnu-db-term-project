@@ -15,12 +15,13 @@ const string password = "1234";                   // 사용자 비밀번호
 
 // 메뉴 출력 함수
 void showMenu() {
-    cout << "1. View Club List\n";
+    wcout << "1. View Club List\n";
     cout << "2. View Club Members and Details\n";
     cout << "3. Add New Club\n";
     cout << "4. Search Club by Name\n";
     cout << "5. Delete Club by ID\n";
-    cout << "6. Exit\n";
+    cout << "6. Add Student to Club\n";
+    cout << "9. Exit\n";
     cout << "Choose an option: ";
 }
 
@@ -37,7 +38,7 @@ void showClubs(sql::Connection* con) {
         cout << "Club ID: " << res->getInt(1)
             << ", Club Name: " << res->getString(2) << endl;
     }
-
+    cout << "\n";
     delete res;
     delete pstmt;
 }
@@ -102,7 +103,7 @@ void showClubDetails(sql::Connection* con) {
     if (!found) {
         cout << "No achievements found for this club." << endl;
     }
-
+    cout << "\n";
     delete res;
     delete pstmt;
 }
@@ -131,7 +132,7 @@ void addClub(sql::Connection* con) {
 
     pstmt->executeUpdate();
 
-    cout << "새로운 동아리가 추가 되었습니다." << endl;
+    cout << "new club has been added.\n";
 
     delete pstmt;
 }
@@ -151,7 +152,7 @@ void searchClub(sql::Connection* con) {
 
     res = pstmt->executeQuery();
 
-    cout << "\nSearch Results:" << endl;
+    cout << "\nSearch Results:\n";
     bool found = false;
     while (res->next()) {
         cout << "Club ID: " << res->getInt(1)
@@ -162,9 +163,9 @@ void searchClub(sql::Connection* con) {
     }
 
     if (!found) {
-        cout << "해당 동아리를 찾을 수 없음." << endl;
+        cout << "not found";
     }
-
+    cout << "\n";
     delete res;
     delete pstmt;
 }
@@ -194,10 +195,34 @@ void deleteClub(sql::Connection* con) {
     pstmt->setInt(1, club_id);
     pstmt->executeUpdate();
 
-    cout << club_id << "번 동아리가 삭제되었습니다." << endl;
+    cout << club_id << "club has been deleted.\n";
 
     delete pstmt;
 }
+
+// 동아리에 부원 추가하는 함수
+void addMemberToClub(sql::Connection* con) {
+    int student_id, club_id;
+
+    // 학생 ID와 동아리 ID 입력받기
+    cout << "Enter the Student ID: ";
+    cin >> student_id;
+    cout << "Enter the Club ID: ";
+    cin >> club_id;
+
+    // Student_Club 테이블에 부원 추가
+    sql::PreparedStatement* pstmt = con->prepareStatement(
+        "INSERT INTO Student_Club (student_id, club_id) VALUES (?, ?)"
+    );
+    pstmt->setInt(1, student_id);
+    pstmt->setInt(2, club_id);
+    pstmt->executeUpdate();
+
+    cout << "Student has been added to the club\n";
+
+    delete pstmt;
+}
+
 
 
 int main() {
@@ -235,10 +260,13 @@ int main() {
                 deleteClub(con);
                 break;
             case 6:
-                cout << "프로그램 종료." << endl;
+                addMemberToClub(con);
+                break;
+            case 9:
+                cout << "Exit" << endl;
                 break;
             default:
-                cout << "잘못된 인자입니다." << endl;
+                cout << "Wrong Argument" << endl;
             }
 
         } while (choice != 6);
@@ -246,7 +274,7 @@ int main() {
         delete con;
     }
     catch (sql::SQLException& e) {
-        cout << "서버에 접속할 수 없음. Error message: " << e.what() << endl;
+        cout << "Connect Failed. Error message: " << e.what() << endl;
         system("pause");
         exit(1);
     }
