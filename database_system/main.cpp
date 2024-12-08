@@ -336,7 +336,7 @@ int main() {
                 cout << "Wrong Argument" << endl;
             }
 
-        } while (choice != 6);
+        } while (choice != 9);
 
         delete con;
     }
