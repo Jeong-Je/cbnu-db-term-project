@@ -19,7 +19,7 @@ void showMenu() {
     cout << "2. View Club Members and Details\n";
     cout << "3. Add New Club\n";
     cout << "4. Search Club by Name\n";
-    cout << "5. Delete Club by Name\n";
+    cout << "5. Delete Club by ID\n";
     cout << "6. Exit\n";
     cout << "Choose an option: ";
 }
@@ -34,7 +34,6 @@ void showClubs(sql::Connection* con) {
 
     cout << "\nClub List:" << endl;
     while (res->next()) {
-        // 각 동아리의 ID와 이름 출력
         cout << "Club ID: " << res->getInt(1)
             << ", Club Name: " << res->getString(2) << endl;
     }
@@ -49,13 +48,12 @@ void showClubDetails(sql::Connection* con) {
     cout << "Enter the Club ID to view details: ";
     cin >> club_id;
 
-    // 동아리 정보 조회
     sql::PreparedStatement* pstmt;
     sql::ResultSet* res;
 
     // 동아리 부원 수 및 부원 목록 출력
     pstmt = con->prepareStatement(
-        "SELECT COUNT(*) FROM Student WHERE club_id = ?");
+        "SELECT COUNT(*) FROM Student_Club WHERE club_id = ?");
     pstmt->setInt(1, club_id);
     res = pstmt->executeQuery();
     res->next();
@@ -64,18 +62,22 @@ void showClubDetails(sql::Connection* con) {
 
     // 동아리 부원 목록 출력
     pstmt = con->prepareStatement(
-        "SELECT name FROM Student WHERE club_id = ?");
+        "SELECT s.name, sc.position FROM Student s "
+        "JOIN Student_Club sc ON s.student_id = sc.student_id "
+        "WHERE sc.club_id = ?");
     pstmt->setInt(1, club_id);
     res = pstmt->executeQuery();
 
     cout << "Members:" << endl;
     while (res->next()) {
-        cout << "- " << res->getString(1) << endl;
+        cout << "- " << res->getString(1) << " (" << res->getString(2) << ")" << endl;
     }
 
     // 동아리 지도교수 정보 출력
     pstmt = con->prepareStatement(
-        "SELECT a.name FROM Advisor a JOIN Club c ON a.advisor_id = c.advisor_id WHERE c.club_id = ?");
+        "SELECT a.name FROM Advisor a "
+        "JOIN Club c ON a.advisor_id = c.advisor_id "
+        "WHERE c.club_id = ?");
     pstmt->setInt(1, club_id);
     res = pstmt->executeQuery();
     res->next();
@@ -83,14 +85,17 @@ void showClubDetails(sql::Connection* con) {
 
     // 동아리 활동 내역 출력
     pstmt = con->prepareStatement(
-        "SELECT description FROM Achievement WHERE club_id = ?");
+        "SELECT description, achievement_date FROM Achievement "
+        "WHERE club_id = ?");
     pstmt->setInt(1, club_id);
     res = pstmt->executeQuery();
 
     cout << "Achievements:" << endl;
     bool found = false;
     while (res->next()) {
-        cout << "- " << res->getString(1) << endl;
+        // 날짜를 문자열로 가져온 후, 출력
+        string achievementDate = res->getString(2);
+        cout << "- " << res->getString(1) << " (Date: " << achievementDate << ")\n";
         found = true;
     }
 
@@ -117,7 +122,6 @@ void addClub(sql::Connection* con) {
     cin.ignore();
     getline(cin, website_url);
 
-    // PreparedStatement를 사용하여 새 동아리를 데이터베이스에 추가
     sql::PreparedStatement* pstmt = con->prepareStatement(
         "INSERT INTO Club (club_name, advisor_id, website_url) VALUES (?, ?, ?)"
     );
@@ -127,7 +131,7 @@ void addClub(sql::Connection* con) {
 
     pstmt->executeUpdate();
 
-    cout << "New club has been added!" << endl;
+    cout << "새로운 동아리가 추가 되었습니다." << endl;
 
     delete pstmt;
 }
@@ -136,13 +140,12 @@ void addClub(sql::Connection* con) {
 void searchClub(sql::Connection* con) {
     string searchTerm;
     cout << "Enter the club name to search: ";
-    cin.ignore(); // 입력 버퍼 비우기
+    cin.ignore();
     getline(cin, searchTerm);
 
     sql::PreparedStatement* pstmt;
     sql::ResultSet* res;
 
-    // 입력한 동아리명으로 검색
     pstmt = con->prepareStatement("SELECT * FROM Club WHERE club_name LIKE ?");
     pstmt->setString(1, "%" + searchTerm + "%");
 
@@ -151,7 +154,6 @@ void searchClub(sql::Connection* con) {
     cout << "\nSearch Results:" << endl;
     bool found = false;
     while (res->next()) {
-        // 검색된 동아리 목록 출력
         cout << "Club ID: " << res->getInt(1)
             << ", Club Name: " << res->getString(2)
             << ", Advisor ID: " << res->getInt(3)
@@ -160,7 +162,7 @@ void searchClub(sql::Connection* con) {
     }
 
     if (!found) {
-        cout << "No clubs found." << endl;
+        cout << "해당 동아리를 찾을 수 없음." << endl;
     }
 
     delete res;
@@ -182,7 +184,7 @@ void deleteClub(sql::Connection* con) {
     delete pstmt;
 
     // 그 다음에 동아리 부원들의 club_id를 NULL로 업데이트
-    pstmt = con->prepareStatement("UPDATE Student SET club_id = NULL WHERE club_id = ?");
+    pstmt = con->prepareStatement("DELETE FROM Student_Club WHERE club_id = ?");
     pstmt->setInt(1, club_id);
     pstmt->executeUpdate();
     delete pstmt;
@@ -192,7 +194,7 @@ void deleteClub(sql::Connection* con) {
     pstmt->setInt(1, club_id);
     pstmt->executeUpdate();
 
-    cout << "Club with ID " << club_id << " has been deleted!" << endl;
+    cout << club_id << "번 동아리가 삭제되었습니다." << endl;
 
     delete pstmt;
 }
@@ -200,55 +202,51 @@ void deleteClub(sql::Connection* con) {
 
 int main() {
     // 콘솔의 문자셋을 UTF-8로 변경
-    system("chcp 65001"); // 이거 안쓰면 한글이 깨짐
+    system("chcp 65001");
 
     sql::Driver* driver;
     sql::Connection* con;
 
     try {
-        // 드라이버 인스턴스 가져오기
         driver = get_driver_instance();
-
-        // 서버에 연결
         con = driver->connect(server, username, password);
 
-        // 데이터베이스 선택
         con->setSchema("ClubManagement");
 
         int choice;
         do {
-            showMenu(); // 메뉴 출력
+            showMenu();
             cin >> choice;
 
             switch (choice) {
             case 1:
-                showClubs(con);  // 동아리 목록 보기
+                showClubs(con);
                 break;
             case 2:
-                showClubDetails(con); // 특정 동아리 정보 보기
+                showClubDetails(con);
                 break;
             case 3:
-                addClub(con);    // 새 동아리 추가
+                addClub(con);
                 break;
             case 4:
-                searchClub(con); // 동아리 검색
+                searchClub(con);
                 break;
             case 5:
                 deleteClub(con);
                 break;
             case 6:
-                cout << "Exiting the program." << endl; // 프로그램 종료 메시지
+                cout << "프로그램 종료." << endl;
                 break;
             default:
-                cout << "Invalid input. Please try again." << endl; // 잘못된 입력 처리
+                cout << "잘못된 인자입니다." << endl;
             }
 
-        } while (choice != 6); // 종료 전까지 반복
+        } while (choice != 6);
 
-        delete con; // 연결 종료
+        delete con;
     }
     catch (sql::SQLException& e) {
-        cout << "Could not connect to server. Error message: " << e.what() << endl;
+        cout << "서버에 접속할 수 없음. Error message: " << e.what() << endl;
         system("pause");
         exit(1);
     }
