@@ -21,6 +21,7 @@ void showMenu() {
     cout << "4. Search Club by Name\n";
     cout << "5. Delete Club by ID\n";
     cout << "6. Add Student to Club\n";
+    cout << "7. Remove Member from Club\n";  // 새로운 메뉴 추가
     cout << "9. Exit\n";
     cout << "Choose an option: ";
 }
@@ -223,6 +224,30 @@ void addMemberToClub(sql::Connection* con) {
     delete pstmt;
 }
 
+// 동아리에서 학생 탈퇴하는 함수
+void removeMemberFromClub(sql::Connection* con) {
+    int student_id, club_id;
+
+    // 학생 ID와 동아리 ID 입력받기
+    cout << "Enter the Student ID to remove from the club: ";
+    cin >> student_id;
+    cout << "Enter the Club ID: ";
+    cin >> club_id;
+
+    // Student_Club 테이블에서 해당 학생의 동아리 정보 삭제
+    sql::PreparedStatement* pstmt = con->prepareStatement(
+        "DELETE FROM Student_Club WHERE student_id = ? AND club_id = ?"
+    );
+    pstmt->setInt(1, student_id);
+    pstmt->setInt(2, club_id);
+    pstmt->executeUpdate();
+
+    cout << "Student has been removed from the club!" << endl;
+
+    delete pstmt;
+}
+
+
 
 
 int main() {
@@ -261,6 +286,9 @@ int main() {
                 break;
             case 6:
                 addMemberToClub(con);
+                break;
+            case 7:
+                removeMemberFromClub(con);
                 break;
             case 9:
                 cout << "Exit" << endl;
