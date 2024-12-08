@@ -21,7 +21,8 @@ void showMenu() {
     cout << "4. Search Club by Name\n";
     cout << "5. Delete Club by ID\n";
     cout << "6. Add Student to Club\n";
-    cout << "7. Remove Member from Club\n";  // 새로운 메뉴 추가
+    cout << "7. Remove Member from Club\n"; 
+    cout << "8. View Student Achievements\n";  
     cout << "9. Exit\n";
     cout << "Choose an option: ";
 }
@@ -224,6 +225,41 @@ void addMemberToClub(sql::Connection* con) {
     delete pstmt;
 }
 
+// 특정 학생이 참여한 활동 내역을 조회하는 함수
+void showStudentAchievements(sql::Connection* con) {
+    int student_id;
+
+    // 학생 ID 입력받기
+    cout << "Enter the Student ID to view their achievements: ";
+    cin >> student_id;
+
+    // 학생이 속한 동아리의 활동 내역 조회
+    sql::PreparedStatement* pstmt = con->prepareStatement(
+        "SELECT a.description FROM Achievement a "
+        "JOIN Club c ON a.club_id = c.club_id "
+        "JOIN Student_Club sc ON c.club_id = sc.club_id "
+        "WHERE sc.student_id = ?"
+    );
+    pstmt->setInt(1, student_id);
+
+    sql::ResultSet* res = pstmt->executeQuery();
+
+    cout << "\nAchievements for Student ID " << student_id << ":" << endl;
+    bool found = false;
+    while (res->next()) {
+        cout << "- " << res->getString("description") << endl;
+        found = true;
+    }
+
+    if (!found) {
+        cout << "No achievements found for this student." << endl;
+    }
+
+    delete res;
+    delete pstmt;
+}
+
+
 // 동아리에서 학생 탈퇴하는 함수
 void removeMemberFromClub(sql::Connection* con) {
     int student_id, club_id;
@@ -289,6 +325,9 @@ int main() {
                 break;
             case 7:
                 removeMemberFromClub(con);
+                break;
+            case 8:
+                showStudentAchievements(con);
                 break;
             case 9:
                 cout << "Exit" << endl;
