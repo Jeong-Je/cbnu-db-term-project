@@ -9,17 +9,18 @@
 
 using namespace std;
 
-const string server = ""; // MySQL 서버 주소
-const string username = "";               // 사용자 이름
-const string password = "";                   // 사용자 비밀번호
+const string server = "tcp://192.168.56.101:4567"; // MySQL 서버 주소
+const string username = "jeongje";               // 사용자 이름
+const string password = "1234";                   // 사용자 비밀번호
 
 // 메뉴 출력 함수
 void showMenu() {
-    cout << "1. View Club List" << endl;
-    cout << "2. View Club Members and Details" << endl;
-    cout << "3. Add New Club" << endl;
-    cout << "4. Search Club by Name" << endl;
-    cout << "5. Exit" << endl;
+    cout << "1. View Club List\n";
+    cout << "2. View Club Members and Details\n";
+    cout << "3. Add New Club\n";
+    cout << "4. Search Club by Name\n";
+    cout << "5. Delete Club by Name\n";
+    cout << "6. Exit\n";
     cout << "Choose an option: ";
 }
 
@@ -166,6 +167,37 @@ void searchClub(sql::Connection* con) {
     delete pstmt;
 }
 
+// 동아리 삭제하는 함수
+void deleteClub(sql::Connection* con) {
+    int club_id;
+    cout << "Enter the Club ID to delete: ";
+    cin >> club_id;
+
+    sql::PreparedStatement* pstmt;
+
+    // 먼저 해당 동아리의 활동 내역 삭제
+    pstmt = con->prepareStatement("DELETE FROM Achievement WHERE club_id = ?");
+    pstmt->setInt(1, club_id);
+    pstmt->executeUpdate();
+    delete pstmt;
+
+    // 그 다음에 동아리 부원들의 club_id를 NULL로 업데이트
+    pstmt = con->prepareStatement("UPDATE Student SET club_id = NULL WHERE club_id = ?");
+    pstmt->setInt(1, club_id);
+    pstmt->executeUpdate();
+    delete pstmt;
+
+    // 마지막으로 동아리 삭제
+    pstmt = con->prepareStatement("DELETE FROM Club WHERE club_id = ?");
+    pstmt->setInt(1, club_id);
+    pstmt->executeUpdate();
+
+    cout << "Club with ID " << club_id << " has been deleted!" << endl;
+
+    delete pstmt;
+}
+
+
 int main() {
     // 콘솔의 문자셋을 UTF-8로 변경
     system("chcp 65001"); // 이거 안쓰면 한글이 깨짐
@@ -181,7 +213,7 @@ int main() {
         con = driver->connect(server, username, password);
 
         // 데이터베이스 선택
-        con->setSchema("");
+        con->setSchema("ClubManagement");
 
         int choice;
         do {
@@ -202,13 +234,16 @@ int main() {
                 searchClub(con); // 동아리 검색
                 break;
             case 5:
+                deleteClub(con);
+                break;
+            case 6:
                 cout << "Exiting the program." << endl; // 프로그램 종료 메시지
                 break;
             default:
                 cout << "Invalid input. Please try again." << endl; // 잘못된 입력 처리
             }
 
-        } while (choice != 5); // 종료 전까지 반복
+        } while (choice != 6); // 종료 전까지 반복
 
         delete con; // 연결 종료
     }
