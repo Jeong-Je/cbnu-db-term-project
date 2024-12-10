@@ -1,5 +1,8 @@
+
+  <img src="https://github.com/Jeong-Je/lets-go/assets/131790445/4bddbb40-b04c-4363-b01a-dde9c9bcfbf4" alt="cbnu" />
+
 # CBNU 데이터베이스시스템 학기 프로젝트 
-소프트웨어학부 동아리 관리시스템 시스템을 구축하라.
+소프트웨어학부 동아리 관리시스템을 구축하라.
 
 ## MySQL 테이블 구조
 
